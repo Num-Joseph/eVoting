@@ -1,3 +1,4 @@
+// Importation of dependancies
 const express = require("express");
 
 const app = express();
@@ -9,6 +10,8 @@ const prisma = new PrismaClient();
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcrypt");
 
+const jwt = require("jsonwebtoken");
+
 const PORT = 3030;
 
 app.use(bodyParser.json());
@@ -17,6 +20,7 @@ app.use(bodyParser.json());
 //   res.send("Welcome to our campus voting App!");
 // });
 
+// Hashing of passwords
 async function hashPassword(password) {
   try {
     const saltRounds = 10;
@@ -30,6 +34,38 @@ async function hashPassword(password) {
   }
 }
 
+const verifyToken = (req, res, next) => {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    const token = req.headers.authorization.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({
+        status: "fail",
+        message: "Access Denied",
+        token,
+      });
+    }
+    try {
+      const verified = jwt.verify(token, process.env.SECRET_KEY);
+      req.voter = verified;
+      next();
+    } catch (error) {
+      res.status(4403).json({
+        status: "fail",
+        message: "Invalid Token",
+        token,
+      });
+    }
+  }
+  return res.status(500).json({
+    status: "fail",
+    message: "No Header Available",
+  });
+};
+
+// Signing up a voter
 app.post("/signup", async (req, res) => {
   const { fullName, email, password } = req.body;
   try {
